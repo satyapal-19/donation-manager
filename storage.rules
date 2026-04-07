@@ -1,0 +1,53 @@
+// storage.rules
+// Deploy with: firebase deploy --only storage
+
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isAuthenticated() &&
+        firestore.get(/databases/(default)/documents/users/$(request.auth.uid)).data.role == 'admin';
+    }
+
+    // Temple banner - admin write, all authenticated read
+    match /banners/{filename} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Maharaj photos - admin write, all authenticated read
+    match /maharaj_photos/{filename} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Mahaprasad images - admin write, all authenticated read
+    match /mahaprasad/{filename} {
+      allow read: if isAuthenticated();
+      allow write: if isAdmin();
+    }
+
+    // Donation proofs - authenticated users upload, all authenticated read
+    match /donation_proofs/{filename} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Expense request images - authenticated users upload
+    match /expense_requests/{filename} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+
+    // Issue images - authenticated users upload
+    match /issues/{filename} {
+      allow read: if isAuthenticated();
+      allow write: if isAuthenticated();
+    }
+  }
+}

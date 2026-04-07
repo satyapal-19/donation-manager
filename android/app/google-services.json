@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "987056147813",
+    "project_id": "saptah-manager",
+    "storage_bucket": "saptah-manager.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:987056147813:android:d8c0f813de465a04b6258c",
+        "android_client_info": {
+          "package_name": "com.example.saptah_manager"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCZS2FdJIrV3KyFj0aIkoTERmdynwn8Jls"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
