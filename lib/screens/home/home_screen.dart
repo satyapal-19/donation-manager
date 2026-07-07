@@ -4,18 +4,24 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import '../../models/user_model.dart';
 import '../../models/event_model.dart';
 import '../../models/mahaprasad_model.dart';
-import '../../services/donation_service.dart';
-import '../../services/expense_service.dart';
 import '../../services/other_services.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_helpers.dart';
 import '../../utils/app_constants.dart';
 import '../../widgets/common_widgets.dart';
 import '../donations/add_donation_screen.dart';
+import '../expenses/expenses_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final UserModel user;
-  const HomeScreen({super.key, required this.user});
+  /// Switches bottom nav to the expenses tab (index 3).
+  final VoidCallback? onOpenExpensesTab;
+
+  const HomeScreen({
+    super.key,
+    required this.user,
+    this.onOpenExpensesTab,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -87,7 +93,11 @@ class HomeScreen extends StatelessWidget {
         if (user.isAdmin)
           IconButton(
             icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
-            onPressed: () => Navigator.pushNamed(context, '/admin'),
+            onPressed: () => Navigator.pushNamed(
+                  context,
+                  '/admin',
+                  arguments: user,
+                ),
           ),
         IconButton(
           icon: const Icon(Icons.notifications_outlined, color: Colors.white),
@@ -297,7 +307,18 @@ class HomeScreen extends StatelessWidget {
           const SizedBox(width: 12),
           Expanded(
             child: OutlinedButton.icon(
-              onPressed: () {},
+              onPressed: () {
+                if (onOpenExpensesTab != null) {
+                  onOpenExpensesTab!();
+                } else {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ExpensesScreen(user: user),
+                    ),
+                  );
+                }
+              },
               icon: const Icon(Icons.receipt_long_outlined, size: 18),
               label: const Text('खर्च पाहा'),
             ),
@@ -308,13 +329,16 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildTodayEvents() {
+    final currentDay = AppConstants.currentSaptahDay;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SectionHeader(title: 'आजचे कार्यक्रम'),
+        SectionHeader(title: 'आजचे कार्यक्रम (${AppConstants.saptahDays[currentDay - 1]})'),
         StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection(AppConstants.eventsCollection)
+              .where('dayNumber', isEqualTo: currentDay)
+              .orderBy('time')
               .limit(5)
               .snapshots(),
           builder: (context, snap) {
@@ -326,8 +350,8 @@ class HomeScreen extends StatelessWidget {
                           color: AppTheme.primary)));
             }
             if (!snap.hasData || snap.data!.docs.isEmpty) {
-              return const EmptyState(
-                  message: 'आज कोणतेही कार्यक्रम नाहीत',
+              return EmptyState(
+                  message: '${AppConstants.saptahDays[currentDay - 1]} साठी कोणतेही कार्यक्रम नाहीत',
                   icon: Icons.event_busy);
             }
             final events = snap.data!.docs

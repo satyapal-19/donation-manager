@@ -24,11 +24,18 @@ class ExpensesScreen extends StatefulWidget {
 class _ExpensesScreenState extends State<ExpensesScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
+  late final ExpenseService _expenseService;
+  late final Stream<List<ExpenseModel>> _allExpensesStream;
+  late final Stream<List<ExpenseRequestModel>> _myRequestsStream;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
+    _expenseService = ExpenseService();
+    _allExpensesStream = _expenseService.streamAllExpenses();
+    _myRequestsStream =
+        _expenseService.streamUserExpenseRequests(widget.user.uid);
   }
 
   @override
@@ -61,8 +68,14 @@ class _ExpensesScreenState extends State<ExpensesScreen>
       body: TabBarView(
         controller: _tabController,
         children: [
-          _ExpenseListTab(user: widget.user),
-          _MyRequestsTab(user: widget.user),
+          _ExpenseListTab(
+            user: widget.user,
+            expensesStream: _allExpensesStream,
+          ),
+          _MyRequestsTab(
+            user: widget.user,
+            requestsStream: _myRequestsStream,
+          ),
         ],
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -83,14 +96,19 @@ class _ExpensesScreenState extends State<ExpensesScreen>
 // ─────────────────────────────────────────────────────
 class _ExpenseListTab extends StatelessWidget {
   final UserModel user;
-  const _ExpenseListTab({required this.user});
+  final Stream<List<ExpenseModel>> expensesStream;
+
+  const _ExpenseListTab({
+    required this.user,
+    required this.expensesStream,
+  });
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<ExpenseModel>>(
-      stream: ExpenseService().streamAllExpenses(),
+      stream: expensesStream,
       builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const Center(
               child: CircularProgressIndicator(color: AppTheme.primary));
         }
@@ -201,14 +219,19 @@ class _ExpenseCard extends StatelessWidget {
 // ─────────────────────────────────────────────────────
 class _MyRequestsTab extends StatelessWidget {
   final UserModel user;
-  const _MyRequestsTab({required this.user});
+  final Stream<List<ExpenseRequestModel>> requestsStream;
+
+  const _MyRequestsTab({
+    required this.user,
+    required this.requestsStream,
+  });
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<ExpenseRequestModel>>(
-      stream: ExpenseService().streamUserExpenseRequests(user.uid),
+      stream: requestsStream,
       builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const Center(
               child: CircularProgressIndicator(color: AppTheme.primary));
         }

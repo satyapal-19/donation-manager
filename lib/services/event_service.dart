@@ -92,5 +92,45 @@ class EventService {
   Future<void> deleteEvent(String eventId) async {
     await _db.collection(AppConstants.eventsCollection).doc(eventId).delete();
   }
+
+  /// Copies all Day 1 events to Days 2..8.
+  /// If [overwrite] is true, existing events in Days 2..8 are removed first.
+  /// If [overwrite] is false, Day 1 events are appended to existing events.
+  Future<void> copyDayOneEventsToAllDays({bool overwrite = true}) async {
+    final eventsRef = _db.collection(AppConstants.eventsCollection);
+
+    final dayOneSnap = await eventsRef
+        .where('dayNumber', isEqualTo: 1)
+        .orderBy('time')
+        .get();
+    if (dayOneSnap.docs.isEmpty) {
+      throw StateError('Day 1 has no events to copy.');
+    }
+
+    final batch = _db.batch();
+
+    if (overwrite) {
+      final existingTargetSnap = await eventsRef
+          .where('dayNumber', whereIn: [2, 3, 4, 5, 6, 7, 8])
+          .get();
+
+      // Remove previous data for target days first.
+      for (final doc in existingTargetSnap.docs) {
+        batch.delete(doc.reference);
+      }
+    }
+
+    // Clone Day 1 events into each target day.
+    for (var day = 2; day <= 8; day++) {
+      for (final src in dayOneSnap.docs) {
+        final map = Map<String, dynamic>.from(src.data());
+        map['dayNumber'] = day;
+        map['createdAt'] = Timestamp.now();
+        batch.set(eventsRef.doc(), map);
+      }
+    }
+
+    await batch.commit();
+  }
 }
 

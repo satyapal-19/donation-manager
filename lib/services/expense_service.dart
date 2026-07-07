@@ -66,8 +66,8 @@ class ExpenseService {
     if (image != null) {
       final fileName = image.path.split(Platform.pathSeparator).last;
       final ref = _storage.ref().child(
-        '${AppConstants.expenseRequestsCollection}/$requestId\_$fileName',
-      );
+            '${AppConstants.expenseRequestsCollection}/${requestId}_$fileName',
+          );
       await ref.putFile(image);
       imageUrl = await ref.getDownloadURL();
     }
@@ -189,4 +189,3 @@ class ExpenseService {
     });
   }
 }
-

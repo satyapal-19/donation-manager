@@ -62,6 +62,13 @@ class _LoginScreenState extends State<LoginScreen> {
       setState(() => _error = 'कृपया ६ अंकी OTP टाका');
       return;
     }
+    // Auto-verify may have signed in already; avoid second signIn (fails → false "wrong OTP").
+    final already = FirebaseAuth.instance.currentUser;
+    if (already != null) {
+      setState(() { _isLoading = true; _error = null; });
+      await _checkUserExists(already);
+      return;
+    }
     setState(() { _isLoading = true; _error = null; });
     try {
       final result = await _authService.verifyOTP(
@@ -70,8 +77,28 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       if (result?.user != null) {
         await _checkUserExists(result!.user!);
+      } else if (mounted) {
+        setState(() => _isLoading = false);
       }
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      // Session may exist if another path verified; let AuthGate show home.
+      final cur = FirebaseAuth.instance.currentUser;
+      if (cur != null) {
+        await _checkUserExists(cur);
+        return;
+      }
+      final msg = e.code == 'invalid-verification-code'
+          ? 'चुकीचा OTP. पुन्हा प्रयत्न करा.'
+          : (e.message ?? e.code);
+      setState(() { _isLoading = false; _error = msg; });
     } catch (e) {
+      if (!mounted) return;
+      final cur = FirebaseAuth.instance.currentUser;
+      if (cur != null) {
+        await _checkUserExists(cur);
+        return;
+      }
       setState(() { _isLoading = false; _error = 'चुकीचा OTP. पुन्हा प्रयत्न करा.'; });
     }
   }
@@ -79,17 +106,36 @@ class _LoginScreenState extends State<LoginScreen> {
   Future<void> _signInWithCredential(PhoneAuthCredential credential) async {
     try {
       final result = await FirebaseAuth.instance.signInWithCredential(credential);
-      if (result.user != null) await _checkUserExists(result.user!);
-    } catch (_) {}
+      if (result.user != null) {
+        if (!mounted) return;
+        setState(() { _isLoading = true; _error = null; });
+        await _checkUserExists(result.user!);
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isLoading = false;
+          _error = 'प्रवेश पूर्ण झाला नाही. OTP पुन्हा मागवा किंवा अॅप पुन्हा उघडा.';
+        });
+      }
+    }
   }
 
   Future<void> _checkUserExists(User user) async {
     final exists = await _authService.userExists(user.uid);
+    if (!mounted) return;
     if (exists) {
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/home');
+      setState(() {
+        _isLoading = false;
+        _error = null;
+      });
+      AppHelpers.showToast('स्वागत आहे!');
+      // AuthGate rebuilds from authStateChanges → MainNavigation (do not use /home without UserModel).
     } else {
-      setState(() { _isLoading = false; _showNameInput = true; });
+      setState(() {
+        _isLoading = false;
+        _showNameInput = true;
+      });
     }
   }
 
@@ -112,7 +158,12 @@ class _LoginScreenState extends State<LoginScreen> {
       );
       await _authService.createUserProfile(user);
       if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/home');
+      setState(() {
+        _isLoading = false;
+        _showNameInput = false;
+        _error = null;
+      });
+      AppHelpers.showToast('प्रोफाइल तयार झाली ✓');
     } catch (e) {
       setState(() { _isLoading = false; _error = 'प्रोफाइल तयार करताना चूक झाली'; });
     }

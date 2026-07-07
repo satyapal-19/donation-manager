@@ -1,4 +1,3 @@
-import 'package:badges/badges.dart' as badges;
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
@@ -114,7 +113,8 @@ class GradientButton extends StatelessWidget {
               : Icon(icon, color: Colors.white),
           label: Text(
             text,
-            style: const TextStyle(color: Colors.white, fontWeight: FontWeight.w600),
+            style: const TextStyle(
+                color: Colors.white, fontWeight: FontWeight.w600),
           ),
           style: ElevatedButton.styleFrom(
             backgroundColor: Colors.transparent,
@@ -382,7 +382,8 @@ class AppNetworkImage extends StatelessWidget {
       height: height,
       fit: fit,
       placeholder: (_, __) => placeholder ?? const SizedBox.shrink(),
-      errorWidget: (_, __, ___) => placeholder ??
+      errorWidget: (_, __, ___) =>
+          placeholder ??
           Container(
             width: width,
             height: height,
@@ -400,4 +401,3 @@ class AppNetworkImage extends StatelessWidget {
     return img;
   }
 }
-

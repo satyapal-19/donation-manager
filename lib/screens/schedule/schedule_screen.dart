@@ -4,6 +4,7 @@ import '../../models/event_model.dart';
 import '../../services/event_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_constants.dart';
+import '../../utils/app_helpers.dart';
 import '../../widgets/common_widgets.dart';
 import 'add_edit_event_screen.dart';
 
@@ -18,6 +19,7 @@ class _ScheduleScreenState extends State<ScheduleScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabController;
   final _eventService = EventService();
+  bool _isCopyingDayOne = false;
 
   @override
   void initState() {
@@ -38,6 +40,23 @@ class _ScheduleScreenState extends State<ScheduleScreen>
       appBar: AppBar(
         title: const Text('कार्यक्रम वेळापत्रक'),
         automaticallyImplyLeading: false,
+        actions: [
+          if (widget.user.isAdmin)
+            IconButton(
+              tooltip: 'दिवस १ ते सर्व दिवस कॉपी',
+              onPressed: _isCopyingDayOne ? null : _copyDayOneToAllDays,
+              icon: _isCopyingDayOne
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2,
+                        color: Colors.white,
+                      ),
+                    )
+                  : const Icon(Icons.copy_all),
+            ),
+        ],
         bottom: TabBar(
           controller: _tabController,
           isScrollable: true,
@@ -78,6 +97,59 @@ class _ScheduleScreenState extends State<ScheduleScreen>
             )
           : null,
     );
+  }
+
+  Future<void> _copyDayOneToAllDays() async {
+    final mode = await showModalBottomSheet<String>(
+      context: context,
+      showDragHandle: true,
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const Text(
+                'दिवस १ कॉपी करा',
+                style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'दिवस १ चे कार्यक्रम दिवस २ ते ८ मध्ये कसे कॉपी करायचे?',
+                style: TextStyle(color: AppTheme.textSecondary),
+              ),
+              const SizedBox(height: 12),
+              ElevatedButton.icon(
+                onPressed: () => Navigator.pop(context, 'overwrite'),
+                icon: const Icon(Icons.content_paste_go),
+                label: const Text('Overwrite: दिवस २-८ बदलून टाका'),
+              ),
+              const SizedBox(height: 8),
+              OutlinedButton.icon(
+                onPressed: () => Navigator.pop(context, 'append'),
+                icon: const Icon(Icons.playlist_add),
+                label: const Text('Append only: जुने तसेच ठेवा'),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (mode == null) return;
+    final overwrite = mode == 'overwrite';
+
+    setState(() => _isCopyingDayOne = true);
+    try {
+      await _eventService.copyDayOneEventsToAllDays(overwrite: overwrite);
+      AppHelpers.showToast(overwrite
+          ? 'दिवस १ चे कार्यक्रम दिवस २-८ मध्ये बदलून कॉपी झाले ✓'
+          : 'दिवस १ चे कार्यक्रम दिवस २-८ मध्ये जोडले गेले ✓');
+    } catch (e) {
+      AppHelpers.showToast('कॉपी करताना चूक: $e', isError: true);
+    } finally {
+      if (mounted) setState(() => _isCopyingDayOne = false);
+    }
   }
 }
 

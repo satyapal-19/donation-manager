@@ -41,9 +41,8 @@ class DonationService {
     String? proofImageUrl = donation.proofImageUrl;
     if (proofImage != null) {
       final fileName = proofImage.path.split(Platform.pathSeparator).last;
-      final ref = _storage
-          .ref()
-          .child('donation_proofs/$donationId\_$fileName');
+      final ref =
+          _storage.ref().child('donation_proofs/${donationId}_$fileName');
       await ref.putFile(proofImage);
       proofImageUrl = await ref.getDownloadURL();
     }
@@ -68,9 +67,8 @@ class DonationService {
     String? proofImageUrl = donation.proofImageUrl;
     if (newProofImage != null) {
       final fileName = newProofImage.path.split(Platform.pathSeparator).last;
-      final ref = _storage
-          .ref()
-          .child('donation_proofs/${donation.id}\_$fileName');
+      final ref =
+          _storage.ref().child('donation_proofs/${donation.id}_$fileName');
       await ref.putFile(newProofImage);
       proofImageUrl = await ref.getDownloadURL();
     }
@@ -83,7 +81,9 @@ class DonationService {
   }
 
   Future<void> deleteDonation(String donationId) async {
-    await _db.collection(AppConstants.donationsCollection).doc(donationId).delete();
+    await _db
+        .collection(AppConstants.donationsCollection)
+        .doc(donationId)
+        .delete();
   }
 }
-

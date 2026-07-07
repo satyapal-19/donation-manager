@@ -204,7 +204,7 @@ class _AdminExpenseRequestsScreenState
   }
 }
 
-class _RequestList extends StatelessWidget {
+class _RequestList extends StatefulWidget {
   final UserModel user;
   final String status;
   final ExpenseService expenseService;
@@ -216,35 +216,71 @@ class _RequestList extends StatelessWidget {
   });
 
   @override
-  Widget build(BuildContext context) {
-    Stream<List<ExpenseRequestModel>> stream;
-    if (status == AppConstants.statusPending) {
-      stream = expenseService.streamPendingExpenseRequests();
-    } else {
-      stream = expenseService.streamAllExpenseRequests().map(
-          (list) => list.where((r) => r.status == status).toList());
-    }
+  State<_RequestList> createState() => _RequestListState();
+}
 
+class _RequestListState extends State<_RequestList> {
+  late Stream<List<ExpenseRequestModel>> _stream;
+  List<ExpenseRequestModel> _cachedRequests = const [];
+
+  Stream<List<ExpenseRequestModel>> _buildStream() {
+    if (widget.status == AppConstants.statusPending) {
+      return widget.expenseService.streamPendingExpenseRequests();
+    }
+    return widget.expenseService.streamAllExpenseRequests().map(
+        (list) => list.where((r) => r.status == widget.status).toList());
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _stream = _buildStream();
+  }
+
+  @override
+  void didUpdateWidget(covariant _RequestList oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.status != widget.status) {
+      _stream = _buildStream();
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return StreamBuilder<List<ExpenseRequestModel>>(
-      stream: stream,
+      stream: _stream,
       builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
+        if (snap.hasData) {
+          _cachedRequests = snap.data!;
+        }
+        final requests = snap.data ?? _cachedRequests;
+
+        if (snap.connectionState == ConnectionState.waiting &&
+            requests.isEmpty) {
           return const Center(
               child: CircularProgressIndicator(color: AppTheme.primary));
         }
-        if (!snap.hasData || snap.data!.isEmpty) {
+
+        if (snap.hasError && requests.isEmpty) {
           return EmptyState(
-              message: '${AppHelpers.getStatusText(status)} विनंत्या नाहीत',
+              message: 'डेटा लोड होत नाही. नेटवर्क/परवानगी तपासा.',
+              icon: Icons.wifi_off_outlined);
+        }
+
+        if (requests.isEmpty) {
+          return EmptyState(
+              message:
+                  '${AppHelpers.getStatusText(widget.status)} विनंत्या नाहीत',
               icon: Icons.inbox_outlined);
         }
 
         return ListView.builder(
           padding: const EdgeInsets.all(12),
-          itemCount: snap.data!.length,
+          itemCount: requests.length,
           itemBuilder: (_, i) => _AdminRequestCard(
-            request: snap.data![i],
-            user: user,
-            expenseService: expenseService,
+            request: requests[i],
+            user: widget.user,
+            expenseService: widget.expenseService,
           ),
         );
       },

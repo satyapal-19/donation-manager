@@ -32,6 +32,8 @@ migrate_working_dir/
 .pub/
 /build/
 /coverage/
+android/.gradle/
+android/local.properties
 
 # Symbolication related
 app.*.symbols
@@ -43,3 +45,16 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Local Firebase and signing config
+android/app/google-services.json
+ios/Runner/GoogleService-Info.plist
+key.properties
+*.jks
+*.keystore
+
+# Build outputs and accidental binaries
+*.apk
+*.aab
+*.ipa
+android/app/*.exe

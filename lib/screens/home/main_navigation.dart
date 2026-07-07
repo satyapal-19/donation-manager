@@ -26,6 +26,20 @@ class _MainNavigationState extends State<MainNavigation> {
     _user = widget.user;
   }
 
+  @override
+  void didUpdateWidget(MainNavigation oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final o = oldWidget.user;
+    final n = widget.user;
+    // Firestore role/name updates (e.g. admin in console) must reach tabs; initState won't run again.
+    if (o.uid != n.uid ||
+        o.role != n.role ||
+        o.name != n.name ||
+        o.mobile != n.mobile) {
+      setState(() => _user = n);
+    }
+  }
+
   void _onUserUpdated(UserModel user) {
     setState(() => _user = user);
   }
@@ -33,7 +47,10 @@ class _MainNavigationState extends State<MainNavigation> {
   @override
   Widget build(BuildContext context) {
     final screens = [
-      HomeScreen(user: _user),
+      HomeScreen(
+        user: _user,
+        onOpenExpensesTab: () => setState(() => _currentIndex = 3),
+      ),
       ScheduleScreen(user: _user),
       DonationsScreen(user: _user),
       ExpensesScreen(user: _user),
@@ -58,6 +75,13 @@ class _MainNavigationState extends State<MainNavigation> {
         child: BottomNavigationBar(
           currentIndex: _currentIndex,
           onTap: (i) => setState(() => _currentIndex = i),
+          type: BottomNavigationBarType.fixed,
+          backgroundColor: Colors.white,
+          selectedItemColor: AppTheme.primary,
+          unselectedItemColor: AppTheme.textSecondary,
+          selectedFontSize: 11,
+          unselectedFontSize: 11,
+          elevation: 0,
           items: [
             const BottomNavigationBarItem(
               icon: Icon(Icons.home_outlined),

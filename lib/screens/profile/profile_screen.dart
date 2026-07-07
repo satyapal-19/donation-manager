@@ -28,11 +28,14 @@ class _ProfileScreenState extends State<ProfileScreen>
   late TabController _tabController;
   final _authService = AuthService();
   final _donationService = DonationService();
+  late final Stream<List<DonationModel>> _myDonationsStream;
 
   @override
   void initState() {
     super.initState();
     _tabController = TabController(length: 3, vsync: this);
+    _myDonationsStream =
+        _donationService.streamUserDonations(widget.user.uid);
   }
 
   @override
@@ -89,7 +92,10 @@ class _ProfileScreenState extends State<ProfileScreen>
         children: [
           _ProfileInfoTab(user: widget.user, authService: _authService,
               onSignOut: _signOut),
-          _MyDonationsTab(user: widget.user, donationService: _donationService),
+          _MyDonationsTab(
+            user: widget.user,
+            donationsStream: _myDonationsStream,
+          ),
           _SuggestionTab(user: widget.user),
         ],
       ),
@@ -169,8 +175,11 @@ class _ProfileInfoTab extends StatelessWidget {
           const SizedBox(height: 20),
           if (user.isAdmin) ...[
             ElevatedButton.icon(
-              onPressed: () =>
-                  Navigator.pushNamed(context, '/admin'),
+              onPressed: () => Navigator.pushNamed(
+                    context,
+                    '/admin',
+                    arguments: user,
+                  ),
               icon: const Icon(Icons.admin_panel_settings),
               label: const Text('व्यवस्थापक पॅनेल'),
               style: ElevatedButton.styleFrom(
@@ -262,17 +271,19 @@ class _InfoItem {
 // ─────────────────────────────────────────────────────
 class _MyDonationsTab extends StatelessWidget {
   final UserModel user;
-  final DonationService donationService;
+  final Stream<List<DonationModel>> donationsStream;
 
-  const _MyDonationsTab(
-      {required this.user, required this.donationService});
+  const _MyDonationsTab({
+    required this.user,
+    required this.donationsStream,
+  });
 
   @override
   Widget build(BuildContext context) {
     return StreamBuilder<List<DonationModel>>(
-      stream: donationService.streamUserDonations(user.uid),
+      stream: donationsStream,
       builder: (context, snap) {
-        if (snap.connectionState == ConnectionState.waiting) {
+        if (snap.connectionState == ConnectionState.waiting && !snap.hasData) {
           return const Center(
               child: CircularProgressIndicator(color: AppTheme.primary));
         }
@@ -374,6 +385,14 @@ class _SuggestionTab extends StatefulWidget {
 class _SuggestionTabState extends State<_SuggestionTab> {
   final _controller = TextEditingController();
   bool _isLoading = false;
+  late final Stream<List<SuggestionModel>> _suggestionsStream;
+
+  @override
+  void initState() {
+    super.initState();
+    _suggestionsStream =
+        SuggestionService().streamUserSuggestions(widget.user.uid);
+  }
 
   @override
   void dispose() {
@@ -453,9 +472,8 @@ class _SuggestionTabState extends State<_SuggestionTab> {
           ),
           const SizedBox(height: 24),
           const SectionHeader(title: 'माझ्या सूचना'),
-          StreamBuilder(
-            stream: SuggestionService()
-                .streamUserSuggestions(widget.user.uid),
+          StreamBuilder<List<SuggestionModel>>(
+            stream: _suggestionsStream,
             builder: (context, snap) {
               if (!snap.hasData || snap.data!.isEmpty) {
                 return const Padding(

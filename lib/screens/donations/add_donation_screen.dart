@@ -21,6 +21,7 @@ class AddDonationScreen extends StatefulWidget {
 }
 
 class _AddDonationScreenState extends State<AddDonationScreen> {
+  static const String _defaultVillage = 'चिंचोली-भोसे';
   final _formKey = GlobalKey<FormState>();
   final _nameController = TextEditingController();
   final _villageController = TextEditingController();
@@ -44,6 +45,8 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
       _itemDescController.text = d.itemDescription ?? '';
       _selectedType = d.type;
       _selectedPurpose = d.purpose;
+    } else {
+      _villageController.text = _defaultVillage;
     }
   }
 
@@ -71,7 +74,9 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
       final donation = DonationModel(
         id: widget.existingDonation?.id ?? '',
         donorName: _nameController.text.trim(),
-        village: _villageController.text.trim(),
+        village: _villageController.text.trim().isEmpty
+            ? _defaultVillage
+            : _villageController.text.trim(),
         amount: double.tryParse(_amountController.text) ?? 0,
         type: _selectedType,
         purpose: _selectedPurpose,
@@ -128,15 +133,29 @@ class _AddDonationScreenState extends State<AddDonationScreen> {
                       v!.isEmpty ? 'नाव आवश्यक आहे' : null,
                 ),
                 const SizedBox(height: 14),
-                TextFormField(
-                  controller: _villageController,
-                  decoration: const InputDecoration(
-                    labelText: 'गाव *',
-                    prefixIcon: Icon(Icons.location_on_outlined,
-                        color: AppTheme.primary),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withOpacity(0.05),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(color: AppTheme.divider),
                   ),
-                  validator: (v) =>
-                      v!.isEmpty ? 'गाव आवश्यक आहे' : null,
+                  child: const Row(
+                    children: [
+                      Icon(Icons.location_on_outlined, color: AppTheme.primary),
+                      SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          'गाव: चिंचोली-भोसे (डीफॉल्ट)',
+                          style: TextStyle(
+                            color: AppTheme.textSecondary,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
                 const SizedBox(height: 14),
                 TextFormField(

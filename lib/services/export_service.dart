@@ -2,9 +2,8 @@ import 'dart:io';
 import 'dart:convert';
 
 import 'package:csv/csv.dart';
-import 'package:pdf/widgets.dart' as pw;
 import 'package:pdf/pdf.dart';
-import 'package:printing/printing.dart';
+import 'package:pdf/widgets.dart' as pw;
 import 'package:path_provider/path_provider.dart';
 import 'package:share_plus/share_plus.dart';
 
@@ -35,7 +34,8 @@ class ExportService {
 
     final csvString = const ListToCsvConverter().convert(rows);
     final dir = await getTemporaryDirectory();
-    final filePath = '${dir.path}/donations_${DateTime.now().millisecondsSinceEpoch}.csv';
+    final filePath =
+        '${dir.path}/donations_${DateTime.now().millisecondsSinceEpoch}.csv';
     final file = File(filePath);
     await file.writeAsString(csvString, encoding: utf8);
 
@@ -51,11 +51,13 @@ class ExportService {
         build: (context) => pw.Column(
           crossAxisAlignment: pw.CrossAxisAlignment.start,
           children: [
-            pw.Text('Donations Report', style: pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
+            pw.Text('Donations Report',
+                style:
+                    pw.TextStyle(fontSize: 18, fontWeight: pw.FontWeight.bold)),
             pw.SizedBox(height: 10),
             pw.Text('Generated: ${DateTime.now().toString()}'),
             pw.SizedBox(height: 16),
-            pw.Table.fromTextArray(
+            pw.TableHelper.fromTextArray(
               headers: const [
                 'Donor',
                 'Village',
@@ -84,11 +86,11 @@ class ExportService {
 
     final bytes = await doc.save();
     final dir = await getTemporaryDirectory();
-    final filePath = '${dir.path}/donations_${DateTime.now().millisecondsSinceEpoch}.pdf';
+    final filePath =
+        '${dir.path}/donations_${DateTime.now().millisecondsSinceEpoch}.pdf';
     final file = File(filePath);
     await file.writeAsBytes(bytes, flush: true);
 
     await Share.shareXFiles([XFile(filePath)], text: 'Donations PDF');
   }
 }
-

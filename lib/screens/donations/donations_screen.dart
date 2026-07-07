@@ -18,9 +18,18 @@ class DonationsScreen extends StatefulWidget {
 class _DonationsScreenState extends State<DonationsScreen> {
   final _donationService = DonationService();
   final _exportService = ExportService();
+  late final Stream<List<DonationModel>> _donationsStream;
+
   String _sortBy = 'newest';
   String _filterType = 'सर्व';
   bool _isExporting = false;
+
+  @override
+  void initState() {
+    super.initState();
+    // Stable stream: IndexedStack rebuilds all tabs; a new stream each build resets StreamBuilder (flicker).
+    _donationsStream = _donationService.streamAllDonations();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,23 +45,44 @@ class _DonationsScreenState extends State<DonationsScreen> {
           ),
         ),
         actions: [
-          PopupMenuButton<String>(
-            icon: const Icon(Icons.download_outlined, color: Colors.white),
-            onSelected: (v) async {
-              setState(() => _isExporting = true);
-              final donations = await _donationService.streamAllDonations().first;
-              if (v == 'pdf') {
-                await _exportService.exportDonationsPDF(donations);
-              } else {
-                await _exportService.exportDonationsCSV(donations);
-              }
-              setState(() => _isExporting = false);
-            },
-            itemBuilder: (_) => const [
-              PopupMenuItem(value: 'pdf', child: Text('PDF डाउनलोड')),
-              PopupMenuItem(value: 'csv', child: Text('Excel/CSV डाउनलोड')),
-            ],
-          ),
+          if (_isExporting)
+            const Padding(
+              padding: EdgeInsets.symmetric(horizontal: 16),
+              child: Center(
+                child: SizedBox(
+                  width: 20,
+                  height: 20,
+                  child: CircularProgressIndicator(
+                    strokeWidth: 2,
+                    valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                  ),
+                ),
+              ),
+            )
+          else
+            PopupMenuButton<String>(
+              icon: const Icon(Icons.download_outlined, color: Colors.white),
+              onSelected: (v) async {
+                setState(() => _isExporting = true);
+                try {
+                  final donations =
+                      await _donationService.streamAllDonations().first;
+                  if (v == 'pdf') {
+                    await _exportService.exportDonationsPDF(donations);
+                  } else {
+                    await _exportService.exportDonationsCSV(donations);
+                  }
+                } finally {
+                  if (mounted) {
+                    setState(() => _isExporting = false);
+                  }
+                }
+              },
+              itemBuilder: (_) => const [
+                PopupMenuItem(value: 'pdf', child: Text('PDF डाउनलोड')),
+                PopupMenuItem(value: 'csv', child: Text('Excel/CSV डाउनलोड')),
+              ],
+            ),
         ],
       ),
       body: Column(
@@ -60,11 +90,13 @@ class _DonationsScreenState extends State<DonationsScreen> {
           _buildFilterBar(),
           Expanded(
             child: StreamBuilder<List<DonationModel>>(
-              stream: _donationService.streamAllDonations(),
+              stream: _donationsStream,
               builder: (context, snap) {
-                if (snap.connectionState == ConnectionState.waiting) {
+                if (snap.connectionState == ConnectionState.waiting &&
+                    !snap.hasData) {
                   return const Center(
-                      child: CircularProgressIndicator(color: AppTheme.primary));
+                      child:
+                          CircularProgressIndicator(color: AppTheme.primary));
                 }
                 if (!snap.hasData || snap.data!.isEmpty) {
                   return const EmptyState(
@@ -75,9 +107,8 @@ class _DonationsScreenState extends State<DonationsScreen> {
 
                 // Filter
                 if (_filterType != 'सर्व') {
-                  donations = donations
-                      .where((d) => d.type == _filterType)
-                      .toList();
+                  donations =
+                      donations.where((d) => d.type == _filterType).toList();
                 }
 
                 // Sort
@@ -142,8 +173,11 @@ class _DonationsScreenState extends State<DonationsScreen> {
                       backgroundColor: Colors.grey[100],
                       selectedColor: AppTheme.primary.withOpacity(0.2),
                       labelStyle: TextStyle(
-                          color: selected ? AppTheme.primary : AppTheme.textSecondary,
-                          fontWeight: selected ? FontWeight.bold : FontWeight.normal),
+                          color: selected
+                              ? AppTheme.primary
+                              : AppTheme.textSecondary,
+                          fontWeight:
+                              selected ? FontWeight.bold : FontWeight.normal),
                     ),
                   );
                 }).toList(),
@@ -155,8 +189,10 @@ class _DonationsScreenState extends State<DonationsScreen> {
             onSelected: (v) => setState(() => _sortBy = v),
             itemBuilder: (_) => const [
               PopupMenuItem(value: 'newest', child: Text('नवीनतम प्रथम')),
-              PopupMenuItem(value: 'amount_high', child: Text('रक्कम जास्त ते कमी')),
-              PopupMenuItem(value: 'amount_low', child: Text('रक्कम कमी ते जास्त')),
+              PopupMenuItem(
+                  value: 'amount_high', child: Text('रक्कम जास्त ते कमी')),
+              PopupMenuItem(
+                  value: 'amount_low', child: Text('रक्कम कमी ते जास्त')),
             ],
           ),
         ],
@@ -267,9 +303,11 @@ class _DonationCard extends StatelessWidget {
             const SizedBox(height: 8),
             Row(
               children: [
-                _chip(Icons.flag_outlined, donation.purpose, AppTheme.secondary),
+                _chip(
+                    Icons.flag_outlined, donation.purpose, AppTheme.secondary),
                 const SizedBox(width: 8),
-                _chip(Icons.calendar_today_outlined,
+                _chip(
+                    Icons.calendar_today_outlined,
                     AppHelpers.formatDate(donation.createdAt),
                     AppTheme.textSecondary),
                 const Spacer(),
@@ -283,8 +321,7 @@ class _DonationCard extends StatelessWidget {
                         context,
                         MaterialPageRoute(
                             builder: (_) => AddDonationScreen(
-                                user: user,
-                                existingDonation: donation))),
+                                user: user, existingDonation: donation))),
                   ),
                   const SizedBox(width: 8),
                   IconButton(

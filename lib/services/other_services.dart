@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter/foundation.dart';
 
 import '../models/issue_model.dart';
 import '../models/mahaprasad_model.dart';
@@ -24,7 +25,7 @@ class NotificationService {
       await FirebaseMessaging.instance.getToken();
     } catch (e) {
       // Keep app booting even when Firebase messaging is not configured yet.
-      print('Notification init skipped: $e');
+      debugPrint('Notification init skipped: $e');
     }
   }
 
@@ -69,7 +70,8 @@ class MahaprasadService {
         .snapshots()
         .map((snap) {
       if (!snap.exists) return null;
-      return MahaprasadModel.fromMap(snap.data() as Map<String, dynamic>, snap.id);
+      return MahaprasadModel.fromMap(
+          snap.data() as Map<String, dynamic>, snap.id);
     });
   }
 
@@ -84,7 +86,7 @@ class MahaprasadService {
       final fileName = image.path.split(Platform.pathSeparator).last;
       final ref = FirebaseStorage.instance
           .ref()
-          .child('${AppConstants.mahaprasadCollection}/$docId\_$fileName');
+          .child('${AppConstants.mahaprasadCollection}/${docId}_$fileName');
       await ref.putFile(image);
       imageUrl = await ref.getDownloadURL();
     }
@@ -143,9 +145,8 @@ class IssueService {
         .collection(AppConstants.issuesCollection)
         .orderBy('createdAt', descending: true)
         .snapshots()
-        .map((snap) => snap.docs
-            .map((d) => IssueModel.fromMap(d.data(), d.id))
-            .toList());
+        .map((snap) =>
+            snap.docs.map((d) => IssueModel.fromMap(d.data(), d.id)).toList());
   }
 
   Future<void> resolveIssue({
@@ -166,4 +167,3 @@ class IssueService {
     });
   }
 }
-

@@ -8,17 +8,33 @@ class AppHelpers {
   static final GlobalKey<ScaffoldMessengerState> scaffoldMessengerKey =
       GlobalKey<ScaffoldMessengerState>();
 
+  static const _monthsEn = [
+    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
+    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec',
+  ];
+
   static String formatCurrency(double amount) {
     final formatted = NumberFormat('#,##0.##', 'en_IN').format(amount);
     return '₹$formatted';
   }
 
+  /// No `initializeDateFormatting` required (avoids "Locale data has not been initialized" in profile/tests).
   static String formatDate(DateTime date) {
-    return DateFormat('dd MMM yyyy', 'en_IN').format(date);
+    final d = date.day.toString().padLeft(2, '0');
+    final m = _monthsEn[date.month - 1];
+    return '$d $m ${date.year}';
   }
 
   static String formatDateTime(DateTime dateTime) {
-    return DateFormat('dd MMM yyyy • hh:mm a', 'en_IN').format(dateTime);
+    final d = dateTime.day.toString().padLeft(2, '0');
+    final m = _monthsEn[dateTime.month - 1];
+    final h24 = dateTime.hour;
+    final h12 = h24 == 0
+        ? 12
+        : (h24 > 12 ? h24 - 12 : h24);
+    final mm = dateTime.minute.toString().padLeft(2, '0');
+    final ap = h24 >= 12 ? 'PM' : 'AM';
+    return '$d $m ${dateTime.year} • ${h12.toString().padLeft(2, '0')}:$mm $ap';
   }
 
   static String getStatusText(String status) {

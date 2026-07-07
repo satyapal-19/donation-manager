@@ -2,12 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
-import 'services/auth_service.dart';
 import 'services/other_services.dart';
 import 'models/user_model.dart';
 import 'theme/app_theme.dart';
 import 'utils/app_helpers.dart';
+import 'utils/app_constants.dart';
 import 'screens/auth/login_screen.dart';
 import 'screens/home/main_navigation.dart';
 import 'screens/admin/admin_panel_screen.dart';
@@ -22,32 +23,32 @@ void main() async {
     ).timeout(const Duration(seconds: 15));
     firebaseReady = true;
   } catch (e) {
-    print('Firebase init failed: $e');
+    debugPrint('Firebase init failed: $e');
   }
 
   if (firebaseReady) {
     try {
       await NotificationService().initialize();
     } catch (e) {
-      print('Notification init failed: $e');
+      debugPrint('Notification init failed: $e');
     }
   }
 
-  runApp(SaptahManagerApp(firebaseReady: firebaseReady));
+  runApp(DonationManagerApp(firebaseReady: firebaseReady));
 }
 
-class SaptahManagerApp extends StatelessWidget {
+class DonationManagerApp extends StatelessWidget {
   final bool firebaseReady;
-  const SaptahManagerApp({super.key, required this.firebaseReady});
+  const DonationManagerApp({super.key, required this.firebaseReady});
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
-      title: 'सप्ताह व्यवस्थापक',
+      title: 'Donation Manager',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
       scaffoldMessengerKey: AppHelpers.scaffoldMessengerKey,
-      home: firebaseReady ? const AuthGate() : const LoginScreen(),
+      home: firebaseReady ? const AuthGate() : const _SetupRequiredScreen(),
       routes: {
         '/login': (_) => const LoginScreen(),
       },
@@ -84,19 +85,25 @@ class AuthGate extends StatelessWidget {
           return const _SplashScreen();
         }
         if (snapshot.hasData && snapshot.data != null) {
-          return FutureBuilder<UserModel?>(
-            future: AuthService().getUserProfile(snapshot.data!.uid),
-            builder: (context, userSnap) {
-              if (userSnap.connectionState == ConnectionState.waiting) {
+          final uid = snapshot.data!.uid;
+          // Live listen: new sign-ups see home as soon as `users/{uid}` is written.
+          return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+            stream: FirebaseFirestore.instance
+                .collection(AppConstants.usersCollection)
+                .doc(uid)
+                .snapshots(),
+            builder: (context, docSnap) {
+              if (docSnap.connectionState == ConnectionState.waiting &&
+                  !docSnap.hasData) {
                 return const _SplashScreen();
               }
-              if (userSnap.hasData && userSnap.data != null) {
-                final user = userSnap.data!;
-                // Subscribe to admin topic if admin
-                if (user.isAdmin) {
-                  NotificationService().subscribeAdmin();
+              final doc = docSnap.data;
+              if (doc != null && doc.exists) {
+                final data = doc.data();
+                if (data != null) {
+                  final user = UserModel.fromMap(data, doc.id);
+                  return _HomeShell(user: user);
                 }
-                return MainNavigation(user: user);
               }
               return const LoginScreen();
             },
@@ -104,6 +111,99 @@ class AuthGate extends StatelessWidget {
         }
         return const LoginScreen();
       },
+    );
+  }
+}
+
+/// Subscribes FCM topic once per session; avoids calling [subscribeAdmin] on every StreamBuilder rebuild.
+class _HomeShell extends StatefulWidget {
+  final UserModel user;
+  const _HomeShell({required this.user});
+
+  @override
+  State<_HomeShell> createState() => _HomeShellState();
+}
+
+class _HomeShellState extends State<_HomeShell> {
+  @override
+  void initState() {
+    super.initState();
+    _maybeSubscribeAdmin(widget.user);
+  }
+
+  @override
+  void didUpdateWidget(_HomeShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (!oldWidget.user.isAdmin && widget.user.isAdmin) {
+      _maybeSubscribeAdmin(widget.user);
+    }
+  }
+
+  void _maybeSubscribeAdmin(UserModel user) {
+    if (!user.isAdmin) return;
+    NotificationService()
+        .subscribeAdmin()
+        .catchError((error) => debugPrint('subscribeAdmin skipped: $error'));
+  }
+
+  @override
+  Widget build(BuildContext context) => MainNavigation(user: widget.user);
+}
+
+class _SetupRequiredScreen extends StatelessWidget {
+  const _SetupRequiredScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [AppTheme.primaryDark, AppTheme.primary, Color(0xFFFFB74D)],
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
+        ),
+        child: SafeArea(
+          child: Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: const [
+                  Icon(
+                    Icons.volunteer_activism_rounded,
+                    size: 72,
+                    color: Colors.white,
+                  ),
+                  SizedBox(height: 20),
+                  Text(
+                    'Donation Manager',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                  SizedBox(height: 12),
+                  Text(
+                    'Firebase is not configured for this build yet.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white, fontSize: 16),
+                  ),
+                  SizedBox(height: 8),
+                  Text(
+                    'Add the platform Firebase files from the README to unlock the full app.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(color: Colors.white70, fontSize: 14),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -126,10 +226,14 @@ class _SplashScreen extends StatelessWidget {
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Text('🙏', style: TextStyle(fontSize: 72)),
+              Icon(
+                Icons.volunteer_activism_rounded,
+                size: 72,
+                color: Colors.white,
+              ),
               SizedBox(height: 20),
               Text(
-                'सप्ताह व्यवस्थापक',
+                'Donation Manager',
                 style: TextStyle(
                   color: Colors.white,
                   fontSize: 28,
@@ -138,7 +242,7 @@ class _SplashScreen extends StatelessWidget {
               ),
               SizedBox(height: 8),
               Text(
-                'अखंड हरिनाम सप्ताह',
+                'Donations, expenses, and event coordination',
                 style: TextStyle(color: Colors.white70, fontSize: 16),
               ),
               SizedBox(height: 40),

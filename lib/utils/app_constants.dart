@@ -27,13 +27,21 @@ class AppConstants {
     'दिवस ८',
   ];
 
+  // Dashboard "आजचे कार्यक्रम" will read events only for this day number.
+  // Update this value daily during the Saptah.
+  static const int currentSaptahDay = 7;
+
   // Dropdowns
   static const List<String> eventTypes = [
-    'कीर्तन',
-    'प्रवचन',
-    'महाप्रसाद',
-    'आरती',
-    'कार्यक्रम',
+    'काकडा',
+    'हरिपाठ',
+    'ज्ञानेश्वरी पारायण',
+    'सार्थ तुकाराम गाथा',
+    'भोजन आणि विश्रांती',
+    'एकनाथी भावार्थ रामायण',
+    'कीर्तन हरिजागर',
+    'भारुड',
+    'शोभायात्रा',
   ];
 
   static const List<String> donationTypes = [

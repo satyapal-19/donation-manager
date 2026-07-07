@@ -1,7 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-import '../utils/app_constants.dart';
-
 class UserModel {
   final String uid;
   final String name;
@@ -43,4 +41,3 @@ class UserModel {
         'createdAt': Timestamp.fromDate(createdAt),
       };
 }
-
