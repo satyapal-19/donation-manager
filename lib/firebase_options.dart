@@ -35,14 +35,7 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyCZS2FdJIrV3KyFj0aIkoTERmdynwn8Jls',
-    appId: '1:987056147813:android:d8c0f813de465a04b6258c',
-    messagingSenderId: '987056147813',
-    projectId: 'saptah-manager',
-    storageBucket: 'saptah-manager.firebasestorage.app',
-  );
-
+  
   // ⚠️  REPLACE THESE VALUES with your actual Firebase project config
 
   static const FirebaseOptions ios = FirebaseOptions(
