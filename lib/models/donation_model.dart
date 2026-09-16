@@ -12,6 +12,12 @@ class DonationModel {
   final String addedByName;
   final DateTime createdAt;
   final String? itemDescription;
+  final String? donorPhone;
+  final String? utrNumber;
+  final String paymentStatus;
+  final String? verifiedByUid;
+  final String? verifiedByName;
+  final DateTime? verifiedAt;
 
   const DonationModel({
     required this.id,
@@ -25,7 +31,15 @@ class DonationModel {
     required this.addedByName,
     required this.createdAt,
     required this.itemDescription,
+    this.donorPhone,
+    this.utrNumber,
+    this.paymentStatus = 'verified',
+    this.verifiedByUid,
+    this.verifiedByName,
+    this.verifiedAt,
   });
+
+  bool get isVerified => paymentStatus == 'verified';
 
   DonationModel copyWith({
     String? id,
@@ -39,6 +53,12 @@ class DonationModel {
     String? addedByName,
     DateTime? createdAt,
     String? itemDescription,
+    String? donorPhone,
+    String? utrNumber,
+    String? paymentStatus,
+    String? verifiedByUid,
+    String? verifiedByName,
+    DateTime? verifiedAt,
   }) {
     return DonationModel(
       id: id ?? this.id,
@@ -52,6 +72,12 @@ class DonationModel {
       addedByName: addedByName ?? this.addedByName,
       createdAt: createdAt ?? this.createdAt,
       itemDescription: itemDescription ?? this.itemDescription,
+      donorPhone: donorPhone ?? this.donorPhone,
+      utrNumber: utrNumber ?? this.utrNumber,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
+      verifiedByUid: verifiedByUid ?? this.verifiedByUid,
+      verifiedByName: verifiedByName ?? this.verifiedByName,
+      verifiedAt: verifiedAt ?? this.verifiedAt,
     );
   }
 
@@ -63,21 +89,37 @@ class DonationModel {
             ? createdAtRaw
             : DateTime.now();
 
+    final verifiedAtRaw = map['verifiedAt'];
+    final verifiedAt = verifiedAtRaw is Timestamp
+        ? verifiedAtRaw.toDate()
+        : verifiedAtRaw is DateTime
+            ? verifiedAtRaw
+            : null;
+
     final amountRaw = map['amount'];
     final amount = amountRaw is num ? amountRaw.toDouble() : 0.0;
+    final type = (map['type'] ?? '') as String;
+    final status = (map['paymentStatus'] as String?) ??
+        (type == 'ऑनलाइन' && map['utrNumber'] != null ? 'pending' : 'verified');
 
     return DonationModel(
       id: id,
       donorName: (map['donorName'] ?? '') as String,
       village: (map['village'] ?? '') as String,
       amount: amount,
-      type: (map['type'] ?? '') as String,
+      type: type,
       purpose: (map['purpose'] ?? '') as String,
       proofImageUrl: map['proofImageUrl'] as String?,
       addedByUid: (map['addedByUid'] ?? '') as String,
       addedByName: (map['addedByName'] ?? '') as String,
       createdAt: createdAt,
       itemDescription: map['itemDescription'] as String?,
+      donorPhone: map['donorPhone'] as String?,
+      utrNumber: map['utrNumber'] as String?,
+      paymentStatus: status,
+      verifiedByUid: map['verifiedByUid'] as String?,
+      verifiedByName: map['verifiedByName'] as String?,
+      verifiedAt: verifiedAt,
     );
   }
 
@@ -92,6 +134,12 @@ class DonationModel {
         'addedByName': addedByName,
         'createdAt': Timestamp.fromDate(createdAt),
         'itemDescription': itemDescription,
+        'donorPhone': donorPhone,
+        'utrNumber': utrNumber,
+        'paymentStatus': paymentStatus,
+        'verifiedByUid': verifiedByUid,
+        'verifiedByName': verifiedByName,
+        'verifiedAt': verifiedAt != null ? Timestamp.fromDate(verifiedAt!) : null,
       };
 }
 

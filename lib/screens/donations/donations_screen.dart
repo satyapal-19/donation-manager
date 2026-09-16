@@ -6,11 +6,18 @@ import '../../services/export_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_helpers.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/upi_qr_dialog.dart';
 import 'add_donation_screen.dart';
 
 class DonationsScreen extends StatefulWidget {
   final UserModel user;
-  const DonationsScreen({super.key, required this.user});
+  final List<DonationModel>? previewDonations;
+
+  const DonationsScreen({
+    super.key,
+    required this.user,
+    this.previewDonations,
+  });
   @override
   State<DonationsScreen> createState() => _DonationsScreenState();
 }
@@ -18,8 +25,10 @@ class DonationsScreen extends StatefulWidget {
 class _DonationsScreenState extends State<DonationsScreen> {
   final _donationService = DonationService();
   final _exportService = ExportService();
+  final _searchController = TextEditingController();
   late final Stream<List<DonationModel>> _donationsStream;
 
+  String _searchQuery = '';
   String _sortBy = 'newest';
   String _filterType = 'सर्व';
   bool _isExporting = false;
@@ -28,7 +37,15 @@ class _DonationsScreenState extends State<DonationsScreen> {
   void initState() {
     super.initState();
     // Stable stream: IndexedStack rebuilds all tabs; a new stream each build resets StreamBuilder (flicker).
-    _donationsStream = _donationService.streamAllDonations();
+    _donationsStream = widget.previewDonations != null
+        ? Stream.value(List<DonationModel>.from(widget.previewDonations!))
+        : _donationService.streamAllDonations();
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   @override
@@ -45,6 +62,11 @@ class _DonationsScreenState extends State<DonationsScreen> {
           ),
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.qr_code_2, color: Colors.white),
+            tooltip: 'QR देणगी स्वीकारा',
+            onPressed: () => UpiQrDialog.show(context, user: widget.user),
+          ),
           if (_isExporting)
             const Padding(
               padding: EdgeInsets.symmetric(horizontal: 16),
@@ -65,8 +87,9 @@ class _DonationsScreenState extends State<DonationsScreen> {
               onSelected: (v) async {
                 setState(() => _isExporting = true);
                 try {
-                  final donations =
-                      await _donationService.streamAllDonations().first;
+                  final donations = widget.previewDonations != null
+                      ? List<DonationModel>.from(widget.previewDonations!)
+                      : await _donationService.streamAllDonations().first;
                   if (v == 'pdf') {
                     await _exportService.exportDonationsPDF(donations);
                   } else {
@@ -87,6 +110,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
       ),
       body: Column(
         children: [
+          _buildSearchBar(),
           _buildFilterBar(),
           Expanded(
             child: StreamBuilder<List<DonationModel>>(
@@ -105,8 +129,28 @@ class _DonationsScreenState extends State<DonationsScreen> {
                 }
                 var donations = snap.data!;
 
-                // Filter
-                if (_filterType != 'सर्व') {
+                // Search query filter
+                if (_searchQuery.isNotEmpty) {
+                  donations = donations.where((d) {
+                    final nameMatch =
+                        d.donorName.toLowerCase().contains(_searchQuery);
+                    final villageMatch =
+                        d.village.toLowerCase().contains(_searchQuery);
+                    final phoneMatch =
+                        d.donorPhone?.toLowerCase().contains(_searchQuery) ??
+                            false;
+                    final purposeMatch =
+                        d.purpose.toLowerCase().contains(_searchQuery);
+                    return nameMatch || villageMatch || phoneMatch || purposeMatch;
+                  }).toList();
+                }
+
+                // Filter by type
+                if (_filterType == 'प्रलंबित') {
+                  donations = donations
+                      .where((d) => d.paymentStatus == 'pending')
+                      .toList();
+                } else if (_filterType != 'सर्व') {
                   donations =
                       donations.where((d) => d.type == _filterType).toList();
                 }
@@ -124,15 +168,25 @@ class _DonationsScreenState extends State<DonationsScreen> {
                   children: [
                     _buildTotalBanner(total, donations.length),
                     Expanded(
-                      child: ListView.builder(
-                        padding: const EdgeInsets.all(12),
-                        itemCount: donations.length,
-                        itemBuilder: (_, i) => _DonationCard(
-                          donation: donations[i],
-                          user: widget.user,
-                          donationService: _donationService,
-                        ),
-                      ),
+                      child: donations.isEmpty
+                          ? const Center(
+                              child: Padding(
+                                padding: EdgeInsets.all(24),
+                                child: EmptyState(
+                                  message: 'शोध परिणाम आढळले नाहीत',
+                                  icon: Icons.search_off_outlined,
+                                ),
+                              ),
+                            )
+                          : ListView.builder(
+                              padding: const EdgeInsets.all(12),
+                              itemCount: donations.length,
+                              itemBuilder: (_, i) => _DonationCard(
+                                donation: donations[i],
+                                user: widget.user,
+                                donationService: _donationService,
+                              ),
+                            ),
                     ),
                   ],
                 );
@@ -152,6 +206,48 @@ class _DonationsScreenState extends State<DonationsScreen> {
     );
   }
 
+  Widget _buildSearchBar() {
+    return Container(
+      color: Colors.white,
+      padding: const EdgeInsets.fromLTRB(14, 8, 14, 4),
+      child: TextField(
+        controller: _searchController,
+        onChanged: (v) => setState(() => _searchQuery = v.trim().toLowerCase()),
+        decoration: InputDecoration(
+          hintText: 'नाव, गाव किंवा मोबाईलने शोधा...',
+          hintStyle: const TextStyle(fontSize: 13, color: Colors.grey),
+          prefixIcon:
+              const Icon(Icons.search, size: 20, color: AppTheme.primary),
+          suffixIcon: _searchQuery.isNotEmpty
+              ? IconButton(
+                  icon: const Icon(Icons.clear, size: 18),
+                  onPressed: () {
+                    _searchController.clear();
+                    setState(() => _searchQuery = '');
+                  },
+                )
+              : null,
+          contentPadding:
+              const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          border: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          enabledBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: BorderSide(color: Colors.grey.shade300),
+          ),
+          focusedBorder: OutlineInputBorder(
+            borderRadius: BorderRadius.circular(10),
+            borderSide: const BorderSide(color: AppTheme.primary, width: 1.5),
+          ),
+          filled: true,
+          fillColor: Colors.grey.shade50,
+        ),
+      ),
+    );
+  }
+
   Widget _buildFilterBar() {
     return Container(
       color: Colors.white,
@@ -162,7 +258,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
             child: SingleChildScrollView(
               scrollDirection: Axis.horizontal,
               child: Row(
-                children: ['सर्व', 'रोख', 'ऑनलाइन', 'वस्तू'].map((type) {
+                children: ['सर्व', 'रोख', 'ऑनलाइन', 'प्रलंबित', 'वस्तू'].map((type) {
                   final selected = _filterType == type;
                   return Padding(
                     padding: const EdgeInsets.only(right: 8),
@@ -171,7 +267,7 @@ class _DonationsScreenState extends State<DonationsScreen> {
                       selected: selected,
                       onSelected: (_) => setState(() => _filterType = type),
                       backgroundColor: Colors.grey[100],
-                      selectedColor: AppTheme.primary.withOpacity(0.2),
+                      selectedColor: AppTheme.primary.withValues(alpha: 0.2),
                       labelStyle: TextStyle(
                           color: selected
                               ? AppTheme.primary
@@ -247,11 +343,11 @@ class _DonationCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Row(
+              Row(
               children: [
                 CircleAvatar(
                   radius: 22,
-                  backgroundColor: AppTheme.primary.withOpacity(0.15),
+                  backgroundColor: AppTheme.primary.withValues(alpha: 0.15),
                   child: Text(
                     donation.donorName.isNotEmpty
                         ? donation.donorName[0].toUpperCase()
@@ -273,6 +369,43 @@ class _DonationCard extends StatelessWidget {
                       Text(donation.village,
                           style: const TextStyle(
                               color: AppTheme.textSecondary, fontSize: 13)),
+                      if (donation.donorPhone != null &&
+                          donation.donorPhone!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 2),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.phone_outlined,
+                                  size: 11, color: AppTheme.textSecondary),
+                              const SizedBox(width: 3),
+                              Text(
+                                donation.donorPhone!,
+                                style: const TextStyle(
+                                    color: AppTheme.textSecondary,
+                                    fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ),
+                      if (donation.utrNumber != null &&
+                          donation.utrNumber!.isNotEmpty)
+                        Padding(
+                          padding: const EdgeInsets.only(top: 3),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.pin_outlined,
+                                  size: 11, color: Colors.blue),
+                              const SizedBox(width: 3),
+                              Text(
+                                'UTR: ${donation.utrNumber}',
+                                style: const TextStyle(
+                                    color: Colors.blue,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600),
+                              ),
+                            ],
+                          ),
+                        ),
                     ],
                   ),
                 ),
@@ -285,7 +418,7 @@ class _DonationCard extends StatelessWidget {
                       padding: const EdgeInsets.symmetric(
                           horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
-                        color: _typeColor(donation.type).withOpacity(0.12),
+                        color: _typeColor(donation.type).withValues(alpha: 0.12),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Text(donation.type,
@@ -294,6 +427,29 @@ class _DonationCard extends StatelessWidget {
                               color: _typeColor(donation.type),
                               fontWeight: FontWeight.bold)),
                     ),
+                    if (donation.type == 'ऑनलाइन') ...[
+                      const SizedBox(height: 2),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 6, vertical: 1),
+                        decoration: BoxDecoration(
+                          color: donation.isVerified
+                              ? AppTheme.success.withValues(alpha: 0.12)
+                              : Colors.amber.shade100,
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          donation.isVerified ? 'स्वीकृत ✓' : 'पडताळणी बाकी ⏳',
+                          style: TextStyle(
+                            fontSize: 10,
+                            color: donation.isVerified
+                                ? AppTheme.success
+                                : Colors.orange.shade900,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
+                    ],
                   ],
                 ),
               ],
@@ -311,7 +467,38 @@ class _DonationCard extends StatelessWidget {
                     AppHelpers.formatDate(donation.createdAt),
                     AppTheme.textSecondary),
                 const Spacer(),
+                if (user.isAdmin && donation.paymentStatus == 'pending')
+                  Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: TextButton.icon(
+                      style: TextButton.styleFrom(
+                        backgroundColor: AppTheme.success.withValues(alpha: 0.12),
+                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                        visualDensity: VisualDensity.compact,
+                        minimumSize: Size.zero,
+                      ),
+                      icon: const Icon(Icons.check_circle_outline, size: 14, color: AppTheme.success),
+                      label: const Text('मंजूर करा', style: TextStyle(fontSize: 11, color: AppTheme.success, fontWeight: FontWeight.bold)),
+                      onPressed: () async {
+                        await donationService.verifyDonation(
+                          donationId: donation.id,
+                          adminUid: user.uid,
+                          adminName: user.name,
+                        );
+                        AppHelpers.showToast('देणगी मंजूर केली ✓');
+                      },
+                    ),
+                  ),
+                IconButton(
+                  icon: const Icon(Icons.share_outlined,
+                      size: 18, color: Color(0xFF1E88E5)),
+                  tooltip: 'पावती शेअर करा',
+                  padding: EdgeInsets.zero,
+                  constraints: const BoxConstraints(),
+                  onPressed: () => _showShareOptions(context),
+                ),
                 if (user.isAdmin) ...[
+                  const SizedBox(width: 10),
                   IconButton(
                     icon: const Icon(Icons.edit_outlined,
                         size: 18, color: AppTheme.primary),
@@ -381,5 +568,50 @@ class _DonationCard extends StatelessWidget {
       default:
         return AppTheme.textSecondary;
     }
+  }
+
+  void _showShareOptions(BuildContext context) {
+    showModalBottomSheet(
+      context: context,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(16)),
+      ),
+      builder: (_) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 12),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: Color(0xFF25D366),
+                  child: Icon(Icons.chat_outlined, color: Colors.white, size: 20),
+                ),
+                title: const Text('WhatsApp / संदेश पावती'),
+                subtitle: const Text('तपशीलवार पावती संदेश थेट शेअर करा'),
+                onTap: () {
+                  Navigator.pop(context);
+                  ExportService().shareDonationReceiptText(donation);
+                },
+              ),
+              ListTile(
+                leading: const CircleAvatar(
+                  backgroundColor: AppTheme.primary,
+                  child: Icon(Icons.picture_as_pdf_outlined,
+                      color: Colors.white, size: 20),
+                ),
+                title: const Text('PDF पावती स्लिप'),
+                subtitle:
+                    const Text('प्रिंट अथवा डाऊनलोड करण्यायोग्य पावती (A5)'),
+                onTap: () {
+                  Navigator.pop(context);
+                  ExportService().exportSingleDonationPdf(donation);
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
   }
 }

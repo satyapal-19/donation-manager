@@ -53,8 +53,6 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
     if (confirm) {
       await _authService.signOut();
-      if (!mounted) return;
-      Navigator.of(context).pushReplacementNamed('/login');
     }
   }
 

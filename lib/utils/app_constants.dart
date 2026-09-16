@@ -15,6 +15,14 @@ class AppConstants {
   static const String statusApproved = 'approved';
   static const String statusRejected = 'rejected';
 
+  // Payment statuses (for Online UPI donations)
+  static const String paymentStatusVerified = 'verified';
+  static const String paymentStatusPending = 'pending';
+
+  // UPI Payment Configuration
+  static const String defaultUpiId = 'saptah.samiti@upi';
+  static const String defaultPayeeName = 'श्री अखंड हरिनाम सप्ताह समिती';
+
   // Saptah (8 days)
   static const List<String> saptahDays = [
     'दिवस १',

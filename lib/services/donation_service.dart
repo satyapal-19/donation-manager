@@ -31,10 +31,28 @@ class DonationService {
             .toList());
   }
 
+  Future<bool> isUtrAlreadyUsed(String utr) async {
+    final cleaned = utr.trim();
+    if (cleaned.isEmpty) return false;
+    final snap = await _db
+        .collection(AppConstants.donationsCollection)
+        .where('utrNumber', isEqualTo: cleaned)
+        .limit(1)
+        .get();
+    return snap.docs.isNotEmpty;
+  }
+
   Future<void> addDonation(
     DonationModel donation, {
     File? proofImage,
   }) async {
+    if (donation.utrNumber != null && donation.utrNumber!.trim().isNotEmpty) {
+      final exists = await isUtrAlreadyUsed(donation.utrNumber!.trim());
+      if (exists) {
+        throw ArgumentError('हा UTR क्रमांक आधीच नोंदवला गेला आहे!');
+      }
+    }
+
     final docRef = _db.collection(AppConstants.donationsCollection).doc();
     final donationId = docRef.id;
 
@@ -54,6 +72,19 @@ class DonationService {
     );
 
     await docRef.set(finalDonation.toMap());
+  }
+
+  Future<void> verifyDonation({
+    required String donationId,
+    required String adminUid,
+    required String adminName,
+  }) async {
+    await _db.collection(AppConstants.donationsCollection).doc(donationId).update({
+      'paymentStatus': AppConstants.paymentStatusVerified,
+      'verifiedByUid': adminUid,
+      'verifiedByName': adminName,
+      'verifiedAt': FieldValue.serverTimestamp(),
+    });
   }
 
   Future<void> updateDonation(

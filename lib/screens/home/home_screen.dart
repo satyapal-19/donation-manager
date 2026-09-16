@@ -9,18 +9,22 @@ import '../../theme/app_theme.dart';
 import '../../utils/app_helpers.dart';
 import '../../utils/app_constants.dart';
 import '../../widgets/common_widgets.dart';
+import '../../widgets/upi_qr_dialog.dart';
 import '../donations/add_donation_screen.dart';
 import '../expenses/expenses_screen.dart';
 
 class HomeScreen extends StatelessWidget {
   final UserModel user;
+
   /// Switches bottom nav to the expenses tab (index 3).
   final VoidCallback? onOpenExpensesTab;
+  final HomePreviewData? previewData;
 
   const HomeScreen({
     super.key,
     required this.user,
     this.onOpenExpensesTab,
+    this.previewData,
   });
 
   @override
@@ -45,16 +49,17 @@ class HomeScreen extends StatelessWidget {
       expandedHeight: 200,
       pinned: true,
       flexibleSpace: FlexibleSpaceBar(
-        title: Text(
+        title: const Text(
           'सप्ताह व्यवस्थापक',
-          style: const TextStyle(
+          style: TextStyle(
               color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
         ),
         background: Stack(
           fit: StackFit.expand,
           children: [
             CachedNetworkImage(
-              imageUrl: 'https://via.placeholder.com/800x400/FF6F00/FFFFFF?text=हनुमान+मंदिर',
+              imageUrl:
+                  'https://via.placeholder.com/800x400/FF6F00/FFFFFF?text=हनुमान+मंदिर',
               fit: BoxFit.cover,
               errorWidget: (_, __, ___) => Container(
                 decoration: const BoxDecoration(
@@ -71,7 +76,8 @@ class HomeScreen extends StatelessWidget {
                       Text('🙏', style: TextStyle(fontSize: 48)),
                       SizedBox(height: 8),
                       Text('हनुमान मंदिर, चिंचोली-भोसे',
-                          style: TextStyle(color: Colors.white70, fontSize: 13)),
+                          style:
+                              TextStyle(color: Colors.white70, fontSize: 13)),
                     ],
                   ),
                 ),
@@ -80,7 +86,7 @@ class HomeScreen extends StatelessWidget {
             Container(
               decoration: BoxDecoration(
                 gradient: LinearGradient(
-                  colors: [Colors.transparent, Colors.black.withOpacity(0.5)],
+                  colors: [Colors.transparent, Colors.black.withValues(alpha: 0.5)],
                   begin: Alignment.topCenter,
                   end: Alignment.bottomCenter,
                 ),
@@ -90,14 +96,19 @@ class HomeScreen extends StatelessWidget {
         ),
       ),
       actions: [
+        IconButton(
+          icon: const Icon(Icons.qr_code_2, color: Colors.white),
+          tooltip: 'QR देणगी स्वीकारा',
+          onPressed: () => UpiQrDialog.show(context, user: user),
+        ),
         if (user.isAdmin)
           IconButton(
             icon: const Icon(Icons.admin_panel_settings, color: Colors.white),
             onPressed: () => Navigator.pushNamed(
-                  context,
-                  '/admin',
-                  arguments: user,
-                ),
+              context,
+              '/admin',
+              arguments: user,
+            ),
           ),
         IconButton(
           icon: const Icon(Icons.notifications_outlined, color: Colors.white),
@@ -184,6 +195,10 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildSummarySection(BuildContext context) {
+    if (previewData != null) {
+      return _buildStaticSummarySection(previewData!);
+    }
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection(AppConstants.donationsCollection)
@@ -289,38 +304,170 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
+  Widget _buildStaticSummarySection(HomePreviewData data) {
+    final balance = data.totalDonations - data.totalExpenses;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              Expanded(
+                child: SummaryCard(
+                  title: 'एकूण देणगी',
+                  amount: AppHelpers.formatCurrency(data.totalDonations),
+                  icon: Icons.volunteer_activism,
+                  color: AppTheme.success,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: SummaryCard(
+                  title: 'एकूण खर्च',
+                  amount: AppHelpers.formatCurrency(data.totalExpenses),
+                  icon: Icons.receipt_long,
+                  color: AppTheme.error,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 12),
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                colors: balance >= 0
+                    ? [const Color(0xFF1B5E20), AppTheme.success]
+                    : [AppTheme.error, const Color(0xFF8B0000)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              borderRadius: BorderRadius.circular(16),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.account_balance_wallet,
+                    color: Colors.white, size: 28),
+                const SizedBox(width: 12),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text('शिल्लक रक्कम',
+                        style: TextStyle(color: Colors.white70, fontSize: 12)),
+                    Text(
+                      AppHelpers.formatCurrency(balance),
+                      style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 24,
+                          fontWeight: FontWeight.bold),
+                    ),
+                  ],
+                ),
+                const Spacer(),
+                Icon(
+                  balance >= 0 ? Icons.trending_up : Icons.trending_down,
+                  color: Colors.white,
+                  size: 32,
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildQuickActions(BuildContext context) {
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 20, 16, 0),
-      child: Row(
+      child: Column(
         children: [
-          Expanded(
-            child: ElevatedButton.icon(
-              onPressed: () => Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                      builder: (_) => AddDonationScreen(user: user))),
-              icon: const Icon(Icons.add_circle_outline, size: 18),
-              label: const Text('देणगी जोडा'),
-            ),
+          Row(
+            children: [
+              Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () => Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                          builder: (_) => AddDonationScreen(user: user))),
+                  icon: const Icon(Icons.add_circle_outline, size: 18),
+                  label: const Text('देणगी जोडा'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: OutlinedButton.icon(
+                  onPressed: () {
+                    if (onOpenExpensesTab != null) {
+                      onOpenExpensesTab!();
+                    } else {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ExpensesScreen(user: user),
+                        ),
+                      );
+                    }
+                  },
+                  icon: const Icon(Icons.receipt_long_outlined, size: 18),
+                  label: const Text('खर्च पाहा'),
+                ),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: OutlinedButton.icon(
-              onPressed: () {
-                if (onOpenExpensesTab != null) {
-                  onOpenExpensesTab!();
-                } else {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(
-                      builder: (_) => ExpensesScreen(user: user),
+          const SizedBox(height: 10),
+          InkWell(
+            onTap: () => UpiQrDialog.show(context, user: user),
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: AppTheme.primary.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.25),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary,
+                      borderRadius: BorderRadius.circular(8),
                     ),
-                  );
-                }
-              },
-              icon: const Icon(Icons.receipt_long_outlined, size: 18),
-              label: const Text('खर्च पाहा'),
+                    child: const Icon(Icons.qr_code_2,
+                        color: Colors.white, size: 20),
+                  ),
+                  const SizedBox(width: 12),
+                  const Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'UPI QR कोडद्वारे देणगी स्वीकारा',
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 13,
+                            color: AppTheme.textPrimary,
+                          ),
+                        ),
+                        Text(
+                          'GPay, PhonePe, Paytm द्वारे थेट देणगी',
+                          style: TextStyle(
+                            fontSize: 11,
+                            color: AppTheme.textSecondary,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(Icons.arrow_forward_ios,
+                      size: 14, color: AppTheme.primary),
+                ],
+              ),
             ),
           ),
         ],
@@ -329,11 +476,37 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildTodayEvents() {
-    final currentDay = AppConstants.currentSaptahDay;
+    const currentDay = AppConstants.currentSaptahDay;
+    if (previewData != null) {
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          SectionHeader(
+              title:
+                  'आजचे कार्यक्रम (${AppConstants.saptahDays[currentDay - 1]})'),
+          if (previewData!.todayEvents.isEmpty)
+            EmptyState(
+                message:
+                    '${AppConstants.saptahDays[currentDay - 1]} साठी कोणतेही कार्यक्रम नाहीत',
+                icon: Icons.event_busy)
+          else
+            ListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              itemCount: previewData!.todayEvents.length,
+              itemBuilder: (_, i) =>
+                  _EventTile(event: previewData!.todayEvents[i]),
+            ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        SectionHeader(title: 'आजचे कार्यक्रम (${AppConstants.saptahDays[currentDay - 1]})'),
+        SectionHeader(
+            title:
+                'आजचे कार्यक्रम (${AppConstants.saptahDays[currentDay - 1]})'),
         StreamBuilder<QuerySnapshot>(
           stream: FirebaseFirestore.instance
               .collection(AppConstants.eventsCollection)
@@ -346,17 +519,18 @@ class HomeScreen extends StatelessWidget {
               return const Center(
                   child: Padding(
                       padding: EdgeInsets.all(16),
-                      child: CircularProgressIndicator(
-                          color: AppTheme.primary)));
+                      child:
+                          CircularProgressIndicator(color: AppTheme.primary)));
             }
             if (!snap.hasData || snap.data!.docs.isEmpty) {
               return EmptyState(
-                  message: '${AppConstants.saptahDays[currentDay - 1]} साठी कोणतेही कार्यक्रम नाहीत',
+                  message:
+                      '${AppConstants.saptahDays[currentDay - 1]} साठी कोणतेही कार्यक्रम नाहीत',
                   icon: Icons.event_busy);
             }
             final events = snap.data!.docs
-                .map((doc) =>
-                    EventModel.fromMap(doc.data() as Map<String, dynamic>, doc.id))
+                .map((doc) => EventModel.fromMap(
+                    doc.data() as Map<String, dynamic>, doc.id))
                 .toList();
             return ListView.builder(
               shrinkWrap: true,
@@ -371,6 +545,63 @@ class HomeScreen extends StatelessWidget {
   }
 
   Widget _buildTodayMahaprasad() {
+    if (previewData != null) {
+      final previewMahaprasad = previewData!.todayMahaprasad;
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          const SectionHeader(
+              title: 'आजचा महाप्रसाद'),
+          if (previewMahaprasad == null)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: EmptyState(
+                  message:
+                      'आजच्या महाप्रसादाची माहिती उपलब्ध नाही',
+                  icon: Icons.restaurant_outlined),
+            )
+          else
+            Card(
+              margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  if (previewMahaprasad.imageUrl != null)
+                    ClipRRect(
+                      borderRadius:
+                          const BorderRadius.vertical(top: Radius.circular(16)),
+                      child: CachedNetworkImage(
+                        imageUrl: previewMahaprasad.imageUrl!,
+                        height: 160,
+                        width: double.infinity,
+                        fit: BoxFit.cover,
+                      ),
+                    ),
+                  Padding(
+                    padding: const EdgeInsets.all(16),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Row(children: [
+                          Text('🍲', style: TextStyle(fontSize: 20)),
+                          SizedBox(width: 8),
+                          Text('महाप्रसाद मेनू',
+                              style: TextStyle(
+                                  fontWeight: FontWeight.bold, fontSize: 16)),
+                        ]),
+                        const SizedBox(height: 8),
+                        Text(previewMahaprasad.menuText,
+                            style: const TextStyle(fontSize: 14, height: 1.5)),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+        ],
+      );
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -431,6 +662,20 @@ class HomeScreen extends StatelessWidget {
   }
 }
 
+class HomePreviewData {
+  final double totalDonations;
+  final double totalExpenses;
+  final List<EventModel> todayEvents;
+  final MahaprasadModel? todayMahaprasad;
+
+  const HomePreviewData({
+    required this.totalDonations,
+    required this.totalExpenses,
+    required this.todayEvents,
+    required this.todayMahaprasad,
+  });
+}
+
 class _EventTile extends StatelessWidget {
   final EventModel event;
   const _EventTile({required this.event});
@@ -451,7 +696,7 @@ class _EventTile extends StatelessWidget {
             width: 56,
             padding: const EdgeInsets.symmetric(vertical: 6),
             decoration: BoxDecoration(
-              color: AppTheme.primary.withOpacity(0.1),
+              color: AppTheme.primary.withValues(alpha: 0.1),
               borderRadius: BorderRadius.circular(8),
             ),
             child: Text(

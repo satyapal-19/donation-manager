@@ -6,15 +6,25 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_spinkit/flutter_spinkit.dart';
 import 'services/other_services.dart';
 import 'models/user_model.dart';
+import 'preview/preview_app.dart';
 import 'theme/app_theme.dart';
 import 'utils/app_helpers.dart';
 import 'utils/app_constants.dart';
 import 'screens/auth/login_screen.dart';
+import 'screens/auth/complete_profile_screen.dart';
 import 'screens/home/main_navigation.dart';
 import 'screens/admin/admin_panel_screen.dart';
 
+const bool _previewMode = bool.fromEnvironment('PREVIEW_MODE');
+
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  if (_previewMode) {
+    runApp(const DonationManagerPreviewApp());
+    return;
+  }
+
   var firebaseReady = false;
 
   try {
@@ -85,7 +95,8 @@ class AuthGate extends StatelessWidget {
           return const _SplashScreen();
         }
         if (snapshot.hasData && snapshot.data != null) {
-          final uid = snapshot.data!.uid;
+          final firebaseUser = snapshot.data!;
+          final uid = firebaseUser.uid;
           // Live listen: new sign-ups see home as soon as `users/{uid}` is written.
           return StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
             stream: FirebaseFirestore.instance
@@ -105,7 +116,7 @@ class AuthGate extends StatelessWidget {
                   return _HomeShell(user: user);
                 }
               }
-              return const LoginScreen();
+              return CompleteProfileScreen(firebaseUser: firebaseUser);
             },
           );
         }
@@ -164,13 +175,13 @@ class _SetupRequiredScreen extends StatelessWidget {
             end: Alignment.bottomCenter,
           ),
         ),
-        child: SafeArea(
+        child: const SafeArea(
           child: Center(
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: EdgeInsets.all(24),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: const [
+                children: [
                   Icon(
                     Icons.volunteer_activism_rounded,
                     size: 72,
