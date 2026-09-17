@@ -23,6 +23,10 @@ class AppConstants {
   static const String defaultUpiId = 'saptah.samiti@upi';
   static const String defaultPayeeName = 'श्री अखंड हरिनाम सप्ताह समिती';
 
+  // Truecaller OAuth Client ID
+  static const String truecallerClientId =
+      '0maklxa_aunyk-dy0m18ik7xtt4sbnpe7wobjsntoxy';
+
   // Saptah (8 days)
   static const List<String> saptahDays = [
     'दिवस १',

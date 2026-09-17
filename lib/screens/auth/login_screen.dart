@@ -7,6 +7,7 @@ import '../../services/auth_service.dart';
 import '../../services/truecaller_service.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_helpers.dart';
+import '../../utils/app_constants.dart';
 import '../../widgets/common_widgets.dart';
 
 class LoginScreen extends StatefulWidget {
@@ -196,7 +197,7 @@ class _LoginScreenState extends State<LoginScreen> {
       }
 
       final profile = await _truecallerService.verifyUser(
-        clientId: 'YOUR_TRUECALLER_CLIENT_ID',
+        clientId: AppConstants.truecallerClientId,
       );
 
       if (!mounted) return;

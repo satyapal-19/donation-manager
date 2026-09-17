@@ -37,6 +37,7 @@ class TruecallerService {
   Completer<TruecallerProfile>? _authCompleter;
   String? _currentCodeVerifier;
   String? _currentState;
+  String? _clientId;
   bool _isInitialized = false;
 
   void initialize() {
@@ -77,6 +78,7 @@ class TruecallerService {
         'Truecaller Client ID कॉन्फिगर केलेला नाही. कृपया AndroidManifest मध्ये Client ID टाका किंवा SMS OTP वापरा.',
       );
     }
+    _clientId = clientId;
 
     if (!_isInitialized) initialize();
 
@@ -178,6 +180,7 @@ class TruecallerService {
       },
       body: {
         'grant_type': 'authorization_code',
+        'client_id': _clientId ?? '',
         'code': authorizationCode,
         'code_verifier': codeVerifier,
       },

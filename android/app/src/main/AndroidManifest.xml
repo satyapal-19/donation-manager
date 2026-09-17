@@ -33,7 +33,7 @@
         <!-- Truecaller SDK Partner Client ID -->
         <meta-data
             android:name="com.truecaller.android.sdk.ClientId"
-            android:value="YOUR_TRUECALLER_CLIENT_ID" />
+            android:value="0maklxa_aunyk-dy0m18ik7xtt4sbnpe7wobjsntoxy" />
     </application>
     <!-- Required to query activities that can process text, see:
          https://developer.android.com/training/package-visibility and
