@@ -113,6 +113,13 @@ class AuthGate extends StatelessWidget {
                 final data = doc.data();
                 if (data != null) {
                   final user = UserModel.fromMap(data, doc.id);
+                  if (AppConstants.isDefaultAdmin(user.mobile) &&
+                      data['role'] != 'admin') {
+                    FirebaseFirestore.instance
+                        .collection(AppConstants.usersCollection)
+                        .doc(uid)
+                        .update({'role': 'admin'}).catchError((_) {});
+                  }
                   return _HomeShell(user: user);
                 }
               }

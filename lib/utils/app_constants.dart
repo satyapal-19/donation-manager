@@ -27,6 +27,20 @@ class AppConstants {
   static const String truecallerClientId =
       '0maklxa_aunyk-dy0m18ik7xtt4sbnpe7wobjsntoxy';
 
+  // Super Admin Phone Numbers (Automatically granted full admin rights)
+  static const List<String> adminPhones = [
+    '9511675503',
+    '9922538900',
+    '9999999999',
+  ];
+
+  static bool isDefaultAdmin(String? phone) {
+    if (phone == null || phone.isEmpty) return false;
+    final clean = phone.replaceAll(RegExp(r'\D'), '');
+    final last10 = clean.length >= 10 ? clean.substring(clean.length - 10) : clean;
+    return adminPhones.contains(last10);
+  }
+
   // Saptah (8 days)
   static const List<String> saptahDays = [
     'दिवस १',

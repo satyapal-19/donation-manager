@@ -1,4 +1,5 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/app_constants.dart';
 
 class UserModel {
   final String uid;
@@ -15,7 +16,7 @@ class UserModel {
     required this.createdAt,
   });
 
-  bool get isAdmin => role == 'admin';
+  bool get isAdmin => role == 'admin' || AppConstants.isDefaultAdmin(mobile);
 
   factory UserModel.fromMap(Map<String, dynamic> map, String uid) {
     final createdAtRaw = map['createdAt'];
@@ -25,11 +26,15 @@ class UserModel {
             ? createdAtRaw
             : DateTime.now();
 
+    final mobile = (map['mobile'] ?? '') as String;
+    final rawRole = (map['role'] ?? 'user') as String;
+    final role = AppConstants.isDefaultAdmin(mobile) ? 'admin' : rawRole;
+
     return UserModel(
       uid: uid,
       name: (map['name'] ?? '') as String,
-      mobile: (map['mobile'] ?? '') as String,
-      role: (map['role'] ?? 'user') as String,
+      mobile: mobile,
+      role: role,
       createdAt: createdAt,
     );
   }

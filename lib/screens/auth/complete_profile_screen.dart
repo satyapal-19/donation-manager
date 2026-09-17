@@ -1,9 +1,10 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import '../../services/auth_service.dart';
 import '../../models/user_model.dart';
 import '../../theme/app_theme.dart';
 import '../../utils/app_helpers.dart';
+import '../../utils/app_constants.dart';
 import '../../widgets/common_widgets.dart';
 
 class CompleteProfileScreen extends StatefulWidget {
@@ -52,7 +53,7 @@ class _CompleteProfileScreenState extends State<CompleteProfileScreen> {
         uid: widget.firebaseUser.uid,
         name: name,
         mobile: mobile,
-        role: 'user',
+        role: AppConstants.isDefaultAdmin(mobile) ? 'admin' : 'user',
         createdAt: DateTime.now(),
       );
 

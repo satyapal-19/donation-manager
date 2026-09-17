@@ -100,6 +100,7 @@ class AuthService {
         .get();
 
     UserModel userModel;
+    final isAdminPhone = AppConstants.isDefaultAdmin(phoneNumber);
     if (query.docs.isNotEmpty) {
       final existingDoc = query.docs.first;
       final existingData = existingDoc.data();
@@ -109,7 +110,7 @@ class AuthService {
             ? (existingData['name'] as String)
             : (name.isNotEmpty ? name : 'वारकरी'),
         mobile: phoneNumber,
-        role: (existingData['role'] as String?) ?? 'user',
+        role: isAdminPhone ? 'admin' : ((existingData['role'] as String?) ?? 'user'),
         createdAt: (existingData['createdAt'] is Timestamp)
             ? (existingData['createdAt'] as Timestamp).toDate()
             : DateTime.now(),
@@ -119,7 +120,7 @@ class AuthService {
         uid: uid,
         name: name.isNotEmpty ? name : 'वारकरी',
         mobile: phoneNumber,
-        role: 'user',
+        role: isAdminPhone ? 'admin' : 'user',
         createdAt: DateTime.now(),
       );
     }
